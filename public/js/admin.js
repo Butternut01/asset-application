@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const currentStatus = item.status || '';
       const isActual = currentStatus === 'Актуально';
       const isNotActual = currentStatus === 'Неактуально';
-      
+
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>
@@ -57,9 +57,10 @@ document.addEventListener('DOMContentLoaded', function () {
         <td><input type="text" class="form-control form-control-sm" value="${item.location || ''}" data-field="location" data-id="${item._id}"></td>
         <td><input type="text" class="form-control form-control-sm" value="${item.responsible_person || ''}" data-field="responsible_person" data-id="${item._id}"></td>
         <td>
-          <button class="btn btn-sm btn-success save-btn" data-id="${item._id}">
-            Save
-          </button>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-success save-btn" data-id="${item._id}">Save</button>
+            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${item._id}"><i class="bi bi-trash"></i></button>
+          </div>
         </td>
       `;
       tableBody.appendChild(row);
@@ -71,13 +72,20 @@ document.addEventListener('DOMContentLoaded', function () {
         saveItem(this.getAttribute('data-id'));
       });
     });
+
+    // Add event listeners to delete buttons
+    document.querySelectorAll('.delete-btn').forEach(button => {
+      button.addEventListener('click', function () {
+        deleteItem(this.getAttribute('data-id'));
+      });
+    });
   }
 
   // Save item changes
   async function saveItem(id) {
     const inputs = document.querySelectorAll(`[data-id="${id}"]`);
     const updateData = {};
-    
+
     inputs.forEach(input => {
       if (input.tagName === 'INPUT' || input.tagName === 'SELECT') {
         updateData[input.getAttribute('data-field')] = input.value;
@@ -101,6 +109,28 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (error) {
       console.error('Save Error:', error);
       alert('Error saving item');
+    }
+  }
+
+  // Delete item
+  async function deleteItem(id) {
+    if (!confirm('Вы уверены, что хотите удалить эту запись? Это действие необратимо.')) return;
+
+    try {
+      const response = await fetch(`/admin/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        alert('Запись удалена!');
+        loadInventory(currentPage);
+      } else {
+        alert('Не удалось удалить запись');
+      }
+    } catch (error) {
+      console.error('Delete Error:', error);
+      alert('Ошибка при удалении');
     }
   }
 
@@ -146,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
         method: 'POST',
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         window.location.href = '/';
       } else {

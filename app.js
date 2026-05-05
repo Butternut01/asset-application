@@ -42,35 +42,35 @@ app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(cors());
 
-  
-  // Routes
-  app.use('/api/inventory', inventoryRoutes);
-  app.use('/admin', isAdmin, require('./routes/admin'));
-  
-  // Auth routes
-  app.get('/login', (req, res) => {
-    res.render('login');
-  });
 
-  app.post('/login', (req, res, next) => {
-    passport.authenticate('local', (err, user, info) => {
+// Routes
+app.use('/api/inventory', inventoryRoutes);
+app.use('/admin', isAdmin, require('./routes/admin'));
+
+// Auth routes
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+app.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) return next(err);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    req.logIn(user, (err) => {
       if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ success: false, message: 'Invalid credentials' });
-      }
-      req.logIn(user, (err) => {
-        if (err) return next(err);
-        return res.json({ success: true, user: { username: user.username, role: user.role } });
-      });
-    })(req, res, next);
-  });
-
-  app.post('/logout', (req, res) => {
-    req.logout((err) => {
-      if (err) return res.status(500).json({ success: false });
-      res.json({ success: true });
+      return res.json({ success: true, user: { username: user.username, role: user.role } });
     });
+  })(req, res, next);
+});
+
+app.post('/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ success: false });
+    res.json({ success: true });
   });
+});
 // Main route
 app.get('/', (req, res) => {
   res.render('index');
@@ -79,6 +79,46 @@ app.get('/', (req, res) => {
 app.get('/admin', isAdmin, (req, res) => {
   res.render('admin');
 });
+
+// Dashboard route
+app.get('/dashboard', isAdmin, (req, res) => {
+  res.render('dashboard');
+});
+
+// Public QR asset page — accessible without login (for phone scanning)
+app.get('/asset/:id', async (req, res) => {
+  try {
+    const Inventory = require('./models/Inventory');
+    const mongoose = require('mongoose');
+    let item = null;
+
+    // Try by MongoDB ObjectId first
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      item = await Inventory.findById(req.params.id);
+    }
+    // Fallback: search by inventory_number (useful for manual URL entry)
+    if (!item) {
+      item = await Inventory.findOne({ inventory_number: req.params.id });
+    }
+
+    if (!item) {
+      return res.status(404).send(`
+        <html><head><meta charset="UTF-8"><title>Не найдено</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>body{font-family:sans-serif;text-align:center;padding:3rem;background:#f0f2f5;}</style></head>
+        <body><h2>Актив не найден</h2>
+        <p>К сожалению, оборудования с таким идентификатором нет в базе.</p>
+        <a href="/">На главную</a></body></html>
+      `);
+    }
+
+    res.render('asset', { item });
+  } catch (err) {
+    console.error('Asset QR route error:', err);
+    res.status(500).send('Ошибка сервера');
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -10,10 +10,63 @@ document.addEventListener('DOMContentLoaded', function () {
         index: ["inventory_number", "old_inventory_number", "description"]
       }
     });
+
+    // Get current filter values
+    function getFilters() {
+      return {
+        status: document.getElementById('filterStatus').value,
+        department: document.getElementById('filterDepartment').value,
+        type: document.getElementById('filterType').value
+      };
+    }
+
+    // Build query string from filters
+    function buildFilterQuery(page) {
+      const filters = getFilters();
+      const params = new URLSearchParams();
+      params.set('page', page);
+      if (filters.status) params.set('status', filters.status);
+      if (filters.department) params.set('department', filters.department);
+      if (filters.type) params.set('type', filters.type);
+      return params.toString();
+    }
+
+    // Load filter options from API
+    function loadFilters() {
+      fetch('/api/inventory/filters')
+        .then(res => res.json())
+        .then(data => {
+          fillSelect('filterStatus', data.statuses, 'Все статусы');
+          fillSelect('filterDepartment', data.departments, 'Все отделы');
+          fillSelect('filterType', data.types, 'Все типы');
+        })
+        .catch(err => console.error('Error loading filters:', err));
+    }
+
+    function fillSelect(id, options, defaultLabel) {
+      const select = document.getElementById(id);
+      const currentValue = select.value;
+      select.innerHTML = `<option value="">${defaultLabel}</option>`;
+      options.forEach(opt => {
+        select.innerHTML += `<option value="${opt}" ${opt === currentValue ? 'selected' : ''}>${opt}</option>`;
+      });
+    }
+
+    // Filter change handlers
+    document.getElementById('filterStatus').addEventListener('change', () => loadInventory(1));
+    document.getElementById('filterDepartment').addEventListener('change', () => loadInventory(1));
+    document.getElementById('filterType').addEventListener('change', () => loadInventory(1));
+    document.getElementById('resetFilters').addEventListener('click', () => {
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterDepartment').value = '';
+      document.getElementById('filterType').value = '';
+      document.getElementById('searchInput').value = '';
+      loadInventory(1);
+    });
   
     // Load inventory data
     function loadInventory(page = 1) {
-      fetch(`/api/inventory?page=${page}`)
+      fetch(`/api/inventory?${buildFilterQuery(page)}`)
         .then(response => {
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           return response.json();
@@ -23,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
           currentPage = data.currentPage;
           totalPages = data.totalPages;
   
-          console.log('API Response:', data); // Debug line
+          console.log('API Response:', data);
   
           updateTable(inventoryData);
           updatePagination();
@@ -122,34 +175,212 @@ document.addEventListener('DOMContentLoaded', function () {
           return response.json();
         })
         .then(item => {
+          // ── Fill asset details ──
           const modalBody = document.getElementById('modalBody');
           modalBody.innerHTML = `
-            <dl>
-              <dt>Статус:</dt><dd>${item.status}</dd>
-              <dt>Инвентарный номер:</dt><dd>${item.inventory_number}</dd>
-              <dt>Старый инвентарный номер:</dt><dd>${item.old_inventory_number}</dd>
-              <dt>Описание:</dt><dd>${item.description}</dd>
-              <dt>Количество:</dt><dd>${item.quantity}</dd>
-              <dt>Дата приобретения:</dt><dd>${item.purchase_date ? new Date(item.purchase_date).toLocaleDateString() : ''}</dd>
-              <dt>Дата ввода в эксплуатацию:</dt><dd>${item.commissioning_date ? new Date(item.commissioning_date).toLocaleDateString() : ''}</dd>
-              <dt>(%)срок службы:</dt><dd>${item.depreciation_rate}</dd>
-              <dt>Дата окончания эксплуатации:</dt><dd>${item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : ''}</dd>
-              <dt>Остаток:</dt><dd>${item.remainder !== undefined ? item.remainder : ''}</dd>
-              <dt>Первоначальная стоимость:</dt><dd>${item.initial_cost != null ? item.initial_cost.toLocaleString() : ''}</dd>
-              <dt>Накопл. амортизация:</dt><dd>${item.accumulated_depreciation != null ? item.accumulated_depreciation.toLocaleString() : ''}</dd>
-              <dt>Годовая амортизация:</dt><dd>${item.annual_depreciation != null ? item.annual_depreciation.toLocaleString() : ''}</dd>
-              <dt>Месячная амортизация:</dt><dd>${item.monthly_depreciation != null ? item.monthly_depreciation.toLocaleString() : ''}</dd>
-              <dt>Ликвидационная стоимость:</dt><dd>${item.residual_value != null ? item.residual_value.toLocaleString() : ''}</dd> 
-              <dt>МОЛ:</dt><dd>${item.responsible_person}</dd>
-              <dt>Тип:</dt><dd>${item.type}</dd>
-              <dt>Бренд:</dt><dd>${item.brand}</dd>
-              <dt>Пользователь:</dt><dd>${item.user}</dd>
-              <dt>Локация:</dt><dd>${item.location}</dd>
-              <dt>Модель:</dt><dd>${item.model}</dd>
-              <dt>Серийный номер:</dt><dd>${item.serial_number}</dd>
-              <dt>Департамент:</dt><dd>${item.department}</dd>
-            </dl>
+            <div class="row g-4 mb-3">
+              <!-- Основное -->
+              <div class="col-md-6">
+                <div class="card h-100 border shadow-sm" style="border-radius: 10px; overflow: hidden;">
+                  <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-info-circle text-primary me-2"></i>Основная информация</h6>
+                  </div>
+                  <div class="card-body bg-white">
+                    <ul class="list-group list-group-flush" style="background: transparent;">
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Тип</span>
+                        <span class="fw-medium text-end">${item.type || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Бренд</span>
+                        <span class="fw-medium text-end">${item.brand || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Модель</span>
+                        <span class="fw-medium text-end">${item.model || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Серийный номер</span>
+                        <span class="fw-medium text-end">${item.serial_number || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Описание</span>
+                        <span class="fw-medium text-end text-break" style="max-width:60%;">${item.description || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-0">
+                        <span class="text-muted small">Количество</span>
+                        <span class="fw-medium text-end">${item.quantity ?? '—'}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Размещение и статус -->
+              <div class="col-md-6">
+                <div class="card h-100 border shadow-sm" style="border-radius: 10px; overflow: hidden;">
+                  <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt text-success me-2"></i>Размещение и статус</h6>
+                  </div>
+                  <div class="card-body bg-white">
+                    <ul class="list-group list-group-flush" style="background: transparent;">
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Статус</span>
+                        <span class="badge bg-secondary px-2 py-1 rounded-pill">${item.status || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Инвентарный номер</span>
+                        <span class="fw-bold font-monospace bg-light px-2 py-1 rounded border">${item.inventory_number || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Департамент</span>
+                        <span class="fw-medium text-end">${item.department || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Локация</span>
+                        <span class="fw-medium text-end">${item.location || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Пользователь</span>
+                        <span class="fw-medium text-end">${item.user || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-0">
+                        <span class="text-muted small">МОЛ</span>
+                        <span class="fw-medium text-end">${item.responsible_person || '—'}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Финансы -->
+              <div class="col-md-6">
+                <div class="card h-100 border shadow-sm" style="border-radius: 10px; overflow: hidden;">
+                  <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-cash-coin text-warning me-2"></i>Финансы</h6>
+                  </div>
+                  <div class="card-body bg-white">
+                    <ul class="list-group list-group-flush" style="background: transparent;">
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Первоначальная стоимость</span>
+                        <span class="fw-medium text-end">${item.initial_cost != null ? item.initial_cost.toLocaleString('ru') + ' ₸' : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Ликвидационная стоимость</span>
+                        <span class="fw-medium text-end">${item.residual_value != null ? item.residual_value.toLocaleString('ru') + ' ₸' : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Накопл. амортизация</span>
+                        <span class="fw-medium text-end">${item.accumulated_depreciation != null ? item.accumulated_depreciation.toLocaleString('ru') + ' ₸' : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Годовая амортизация</span>
+                        <span class="fw-medium text-end">${item.annual_depreciation != null ? item.annual_depreciation.toLocaleString('ru') + ' ₸' : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Месячная амортизация</span>
+                        <span class="fw-medium text-end">${item.monthly_depreciation != null ? item.monthly_depreciation.toLocaleString('ru') + ' ₸' : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Срок службы (%)</span>
+                        <span class="fw-medium text-end">${item.depreciation_rate ?? '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-0">
+                        <span class="text-muted small">Остаток</span>
+                        <span class="fw-medium text-end">${item.remainder ?? '—'}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Даты и номера -->
+              <div class="col-md-6">
+                <div class="card h-100 border shadow-sm" style="border-radius: 10px; overflow: hidden;">
+                  <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar3 text-info me-2"></i>Даты и номера</h6>
+                  </div>
+                  <div class="card-body bg-white">
+                    <ul class="list-group list-group-flush" style="background: transparent;">
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Старый инв. номер</span>
+                        <span class="fw-medium text-end">${item.old_inventory_number || '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Дата приобретения</span>
+                        <span class="fw-medium text-end">${item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('ru') : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-bottom-dashed">
+                        <span class="text-muted small">Ввод в эксплуатацию</span>
+                        <span class="fw-medium text-end">${item.commissioning_date ? new Date(item.commissioning_date).toLocaleDateString('ru') : '—'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-0">
+                        <span class="text-muted small">Дата окончания</span>
+                        <span class="fw-medium text-end">${item.expiry_date ? new Date(item.expiry_date).toLocaleDateString('ru') : '—'}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <style>
+              .border-bottom-dashed { border-bottom: 1px dashed #dee2e6 !important; }
+            </style>
           `;
+
+          // ── Generate QR code ──
+          const assetUrl = `${window.location.protocol}//${window.location.host}/asset/${item._id}`;
+          const qrContainer = document.getElementById('qrContainer');
+          qrContainer.innerHTML = ''; // clear previous QR
+          const qrObj = new QRCode(qrContainer, {
+            text: assetUrl,
+            width: 180,
+            height: 180,
+            colorDark: '#1e1e2e',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+
+          // Show inventory number below QR
+          document.getElementById('qrInvNumber').textContent =
+            item.inventory_number ? `Инв. № ${item.inventory_number}` : item._id;
+
+          // ── Wire up print button ──
+          const printBtn = document.getElementById('printQrBtn');
+          // Remove any old listener by cloning
+          const newPrintBtn = printBtn.cloneNode(true);
+          printBtn.parentNode.replaceChild(newPrintBtn, printBtn);
+
+          newPrintBtn.addEventListener('click', function () {
+            // qrcodejs generates a canvas inside the container — grab it
+            const qrCanvas = qrContainer.querySelector('canvas');
+            const printArea = document.getElementById('qrPrintArea');
+            const invNum = item.inventory_number || item._id;
+            const desc = item.description ? item.description.slice(0, 50) : '';
+
+            if (qrCanvas) {
+              const dataUrl = qrCanvas.toDataURL('image/png');
+              printArea.innerHTML = `
+                <div style="
+                  display: flex; flex-direction: column; align-items: center; gap: 8px;
+                  padding: 16px; border: 2px solid #333; border-radius: 10px;
+                  width: 230px; font-family: 'Segoe UI', sans-serif;
+                  background: #fff;
+                ">
+                  <div style="font-size:10px;color:#555;font-weight:700;letter-spacing:2px;text-transform:uppercase;">InventoryDB</div>
+                  <img src="${dataUrl}" width="190" height="190" style="display:block;" />
+                  <div style="font-size:13px;font-weight:700;color:#1e1e2e;text-align:center;">${invNum}</div>
+                  ${desc ? `<div style="font-size:10px;color:#555;text-align:center;line-height:1.3;">${desc}</div>` : ''}
+                </div>
+              `;
+            } else {
+              printArea.innerHTML = '<p>Ошибка: QR-код ещё не готов. Подождите момент.</p>';
+            }
+            printArea.style.display = 'block';
+            window.print();
+            printArea.style.display = 'none';
+          });
+
           const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
           modal.show();
         })
@@ -186,6 +417,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   
     // Initial load
+    loadFilters();
     loadInventory();
   });
-  

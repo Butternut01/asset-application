@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= item.inventory_number || 'Актив' %> — InventoryDB</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root {
+      --primary: #4361ee;
+      --bg: #f0f2f5;
+      --card-bg: #ffffff;
+    }
+    body {
+      background: var(--bg);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    .asset-header {
+      background: linear-gradient(135deg, #1e1e2e 0%, #2d2b55 100%);
+      color: #fff;
+      padding: 1.75rem 1.5rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .asset-header::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 160px; height: 160px;
+      background: rgba(67,97,238,0.25);
+      border-radius: 50%;
+    }
+    .brand-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 0.4rem;
+    }
+    .asset-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 0.5rem;
+    }
+    .inv-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.8rem;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .info-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .info-card h6 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.88rem;
+    }
+    .field-row:last-child { border-bottom: none; }
+    .field-label { color: #6c757d; flex-shrink: 0; margin-right: 1rem; }
+    .field-value { font-weight: 500; text-align: right; word-break: break-word; }
+    .footer-note {
+      text-align: center;
+      font-size: 0.72rem;
+      color: #adb5bd;
+      margin-top: 0.5rem;
+      padding-bottom: 1.5rem;
+    }
+    @media (min-width: 576px) {
+      .asset-wrap { max-width: 520px; margin: 2rem auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="asset-wrap px-0 px-sm-3">
+
+    <!-- Header -->
+    <div class="asset-header <%= item.status === 'В работе' ? '' : '' %>">
+      <div class="brand-label"><i class="bi bi-box-seam me-1"></i>InventoryDB</div>
+      <div class="asset-title"><%= item.description || 'Без описания' %></div>
+      <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+        <span class="inv-badge"><i class="bi bi-hash"></i>&nbsp;<%= item.inventory_number || '—' %></span>
+        <%
+          const statusColors = {
+            'В работе':   { bg: '#e6f9ed', color: '#2dc653' },
+            'Списан':     { bg: '#fdecea', color: '#e63946' },
+            'На ремонте': { bg: '#fff3e5', color: '#f4a261' },
+            'На складе':  { bg: '#e0f7fe', color: '#4cc9f0' },
+            'Утерян':     { bg: '#f3e8ff', color: '#7b2d8b' },
+          };
+          const sc = statusColors[item.status] || { bg: '#f0f0f0', color: '#666' };
+          const styleAttr = `style="background-color: ${sc.bg}; color: ${sc.color};"`;
+        %>
+        <span class="status-pill" <%- styleAttr %>>
+          <span class="status-dot"></span><%= item.status || '—' %>
+        </span>
+      </div>
+    </div>
+
+    <div class="p-3">
+
+      <!-- Main info -->
+      <div class="info-card">
+        <h6><i class="bi bi-info-circle"></i>Основное</h6>
+        <div class="field-row"><span class="field-label">Тип</span><span class="field-value"><%= item.type || '—' %></span></div>
+        <div class="field-row"><span class="field-label">Бренд</span><span class="field-value"><%= item.brand || '—' %></span></div>
+        <div class="field-row"><span class="field-label">Модель</span><span class="field-value"><%= item.model || '—' %></span></div>
+        <div class="field-row"><span class="field-label">Серийный номер</span><span class="field-value"><%= item.serial_number || '—' %></span></div>
+        <div class="field-row"><span class="field-label">Количество</span><span class="field-value"><%= item.quantity ?? '—' %></span></div>
+      </div>
+
+      <!-- Location & ownership -->
+      <div class="info-card">
+        <h6><i class="bi bi-geo-alt"></i>Размещение</h6>
+        <div class="field-row"><span class="field-label">Локация</span><span class="field-value"><%= item.location || '—' %></span></div>
+        <div class="field-row"><span class="field-label">Департамент</span><span class="field-value"><%= item.department || '—' %></span></div>
+        <div class="field-row"><span class="field-label">Пользователь</span><span class="field-value"><%= item.user || '—' %></span></div>
+        <div class="field-row"><span class="field-label">МОЛ</span><span class="field-value"><%= item.responsible_person || '—' %></span></div>
+      </div>
+
+      <!-- Financial -->
+      <div class="info-card">
+        <h6><i class="bi bi-cash-coin"></i>Финансы</h6>
+        <div class="field-row"><span class="field-label">Первоначальная стоимость</span><span class="field-value"><%= item.initial_cost != null ? item.initial_cost.toLocaleString() + ' ₸' : '—' %></span></div>
+        <div class="field-row"><span class="field-label">Ликвидационная стоимость</span><span class="field-value"><%= item.residual_value != null ? item.residual_value.toLocaleString() + ' ₸' : '—' %></span></div>
+        <div class="field-row"><span class="field-label">Остаток</span><span class="field-value"><%= item.remainder ?? '—' %></span></div>
+        <div class="field-row"><span class="field-label">Срок службы (%)</span><span class="field-value"><%= item.depreciation_rate ?? '—' %></span></div>
+      </div>
+
+      <!-- Dates -->
+      <div class="info-card">
+        <h6><i class="bi bi-calendar3"></i>Даты</h6>
+        <div class="field-row"><span class="field-label">Дата приобретения</span><span class="field-value"><%= item.purchase_date ? new Date(item.purchase_date).toLocaleDateString() : '—' %></span></div>
+        <div class="field-row"><span class="field-label">Ввод в эксплуатацию</span><span class="field-value"><%= item.commissioning_date ? new Date(item.commissioning_date).toLocaleDateString() : '—' %></span></div>
+        <div class="field-row"><span class="field-label">Окончание эксплуатации</span><span class="field-value"><%= item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '—' %></span></div>
+        <div class="field-row"><span class="field-label">Старый инв. номер</span><span class="field-value"><%= item.old_inventory_number || '—' %></span></div>
+      </div>
+
+      <div class="footer-note">
+        <i class="bi bi-qr-code me-1"></i>Открыто через QR-код &bull; InventoryDB
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

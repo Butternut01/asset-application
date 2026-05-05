@@ -2,21 +2,45 @@ const express = require('express');
 const router = express.Router();
 const Inventory = require('../models/Inventory');
 
-// Get paginated inventory items
+// Get distinct filter values
+router.get('/filters', async (req, res) => {
+  try {
+    const [statuses, departments, types] = await Promise.all([
+      Inventory.distinct('status'),
+      Inventory.distinct('department'),
+      Inventory.distinct('type')
+    ]);
+    res.json({
+      statuses: statuses.filter(Boolean).sort(),
+      departments: departments.filter(Boolean).sort(),
+      types: types.filter(Boolean).sort()
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get paginated inventory items (with optional filters)
 router.get('/', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = 25;
   const skip = (page - 1) * limit;
 
-  console.log(`[GET /] Fetching page ${page} (skip: ${skip}, limit: ${limit})`);
+  // Build filter object
+  const filter = {};
+  if (req.query.status) filter.status = req.query.status;
+  if (req.query.department) filter.department = req.query.department;
+  if (req.query.type) filter.type = req.query.type;
+
+  console.log(`[GET /] Fetching page ${page} (skip: ${skip}, limit: ${limit}), filters:`, filter);
 
   try {
-    const items = await Inventory.find()
+    const items = await Inventory.find(filter)
       .skip(skip)
       .limit(limit)
       .select('status inventory_number old_inventory_number description user location responsible_person');
     
-    const count = await Inventory.countDocuments();
+    const count = await Inventory.countDocuments(filter);
     const totalPages = Math.ceil(count / limit);
 
     console.log(`[GET /] Fetched ${items.length} items, total pages: ${totalPages}`);
